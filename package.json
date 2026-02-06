@@ -1,0 +1,27 @@
+{
+  "name": "pso-payment-gateway-sdk",
+  "version": "1.0.0",
+  "description": "PSO Payment Gateway SDK - Complete payment solution with client SDK and test gateway",
+  "scripts": {
+    "install:sdk": "cd sdk && npm install",
+    "install:gateway": "cd gateway && npm install",
+    "install:all": "npm run install:sdk && npm run install:gateway",
+    "build:sdk": "cd sdk && npm run build",
+    "start:gateway": "cd gateway && npm start",
+    "dev:gateway": "cd gateway && npm run dev",
+    "dev": "npm run build:sdk && npm run start:gateway"
+  },
+  "keywords": [
+    "payment",
+    "gateway",
+    "sdk",
+    "pso",
+    "test"
+  ],
+  "author": "PSO Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/abefimrs/pso-sdk-test.git"
+  }
+}
