@@ -2,8 +2,8 @@
 node_modules/
 package-lock.json
 
-# Build outputs
-sdk/dist/
+# Build outputs (keep sdk/dist for demos)
+# sdk/dist/
 gateway/dist/
 
 # IDE
