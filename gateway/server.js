@@ -7,17 +7,26 @@ const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const path = require('path');
+const config = require('./config/config');
 
 const paymentRoutes = require('./routes/payments');
 const tokenRoutes = require('./routes/tokens');
+const paymentGatewayRoutes = require('./routes/payment-gateway');
+const { generalLimiter } = require('./middleware/rate-limit');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = config.port;
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: config.security.allowedOrigins,
+  credentials: true
+}));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
+
+// Apply general rate limiting
+app.use('/api/', generalLimiter);
 
 // Request logging
 app.use((req, res, next) => {
@@ -26,8 +35,9 @@ app.use((req, res, next) => {
 });
 
 // API Routes
-app.use('/api/payments', paymentRoutes);
+app.use('/api/payments', paymentRoutes); // Legacy test routes
 app.use('/api/tokens', tokenRoutes);
+app.use('/api/payment', paymentGatewayRoutes); // Real gateway integration routes
 
 // Admin interface - serve static HTML
 app.get('/admin', (req, res) => {
@@ -342,11 +352,18 @@ app.get('/', (req, res) => {
   res.json({
     name: 'PSO Test Payment Gateway',
     version: '1.0.0',
-    environment: 'test',
+    environment: config.env,
     endpoints: {
+      // Real Gateway Integration
+      paymentCreate: '/api/payment/create',
+      paymentVerify: '/api/payment/verify',
+      paymentStatus: '/api/payment/status/:orderId',
+      ipn: '/api/payment/ipn',
+      // Legacy Test Endpoints
       payments: '/api/payments/process',
       verify: '/api/payments/verify/:id',
       tokens: '/api/tokens/create',
+      // Admin
       admin: '/admin',
       health: '/health'
     },

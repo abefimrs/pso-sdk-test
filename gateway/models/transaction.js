@@ -41,22 +41,27 @@ class TransactionStore {
   /**
    * Update transaction status
    */
-  update(id, updates) {
-    const transaction = this.transactions.get(id);
-    if (!transaction) {
+  update(transaction) {
+    if (!transaction || !transaction.id) {
       return null;
     }
     
-    Object.assign(transaction, updates);
-    this.transactions.set(id, transaction);
+    this.transactions.set(transaction.id, transaction);
     
     // Update in history
-    const historyIndex = this.transactionHistory.findIndex(t => t.id === id);
+    const historyIndex = this.transactionHistory.findIndex(t => t.id === transaction.id);
     if (historyIndex !== -1) {
       this.transactionHistory[historyIndex] = transaction;
     }
     
     return transaction;
+  }
+
+  /**
+   * Get transaction by order ID
+   */
+  getByOrderId(orderId) {
+    return this.transactionHistory.find(t => t.orderId === orderId);
   }
 
   /**
