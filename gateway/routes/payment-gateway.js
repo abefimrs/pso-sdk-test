@@ -131,14 +131,13 @@ router.post('/verify',
   validatePaymentVerification,
   async (req, res) => {
     try {
-      const { orderId, orderTrackingId } = req.body;
+      const { paymentOrderId } = req.body;
 
-      console.log(`[Payment Verify] Merchant: ${req.merchantId}, Order: ${orderId}`);
+      console.log(`[Payment Verify] Merchant: ${req.merchantId}, PaymentOrderId: ${paymentOrderId}`);
 
-      // Call gateway verification API
+      // Call gateway verification API with new simplified request
       const gatewayResponse = await gatewayClient.verifyPayment({
-        orderId,
-        orderTrackingId
+        paymentOrderId
       });
 
       if (!gatewayResponse.success) {
@@ -151,13 +150,16 @@ router.post('/verify',
         });
       }
 
-      // Update local transaction
-      const transaction = transactionStore.getByOrderId(orderId);
-      if (transaction) {
-        transaction.status = gatewayResponse.data.transaction_info?.status || 'UNKNOWN';
-        transaction.verifiedAt = new Date().toISOString();
-        transaction.transactionInfo = gatewayResponse.data.transaction_info;
-        transactionStore.update(transaction);
+      // Update local transaction using order_id from response
+      const orderId = gatewayResponse.data.transaction_info?.order_id;
+      if (orderId) {
+        const transaction = transactionStore.getByOrderId(orderId);
+        if (transaction) {
+          transaction.status = gatewayResponse.data.transaction_info?.status || 'UNKNOWN';
+          transaction.verifiedAt = new Date().toISOString();
+          transaction.transactionInfo = gatewayResponse.data.transaction_info;
+          transactionStore.update(transaction);
+        }
       }
 
       console.log(`[Payment Verify] Status: ${gatewayResponse.data.transaction_info?.status}`);
