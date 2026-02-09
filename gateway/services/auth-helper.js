@@ -174,16 +174,28 @@ class AuthHelper {
       const expectedDigest = this.generateDigest(requestBody);
 
       // Compare signatures using timing-safe comparison
-      const signatureValid = crypto.timingSafeEqual(
-        Buffer.from(providedSignature),
-        Buffer.from(expectedSignature)
-      );
+      let signatureValid = false;
+      try {
+        signatureValid = crypto.timingSafeEqual(
+          Buffer.from(providedSignature),
+          Buffer.from(expectedSignature)
+        );
+      } catch (error) {
+        // Buffer lengths don't match, signatures are different
+        signatureValid = false;
+      }
 
       // Compare digests using timing-safe comparison
-      const digestValid = crypto.timingSafeEqual(
-        Buffer.from(providedDigest),
-        Buffer.from(expectedDigest)
-      );
+      let digestValid = false;
+      try {
+        digestValid = crypto.timingSafeEqual(
+          Buffer.from(providedDigest),
+          Buffer.from(expectedDigest)
+        );
+      } catch (error) {
+        // Buffer lengths don't match, digests are different
+        digestValid = false;
+      }
 
       return signatureValid && digestValid;
     } catch (error) {
