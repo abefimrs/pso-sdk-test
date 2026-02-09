@@ -7,6 +7,7 @@ A comprehensive payment gateway solution with client-side SDK and test gateway f
 ## Features
 
 - 💳 **Payment Gateway SDK**: JavaScript library for merchant integration
+- 🔐 **Header-Based Authentication**: Secure HMAC-SHA256 signature authentication
 - 🧪 **Test Gateway**: Mock payment processor for development
 - 📱 **In-Host Pop-up**: Secure payment form overlay with responsive design
 - ✅ **Form Validation**: Real-time validation with user-friendly error messages
@@ -14,6 +15,7 @@ A comprehensive payment gateway solution with client-side SDK and test gateway f
 - 🎨 **Customizable**: Clean, modern UI that works on all devices
 - 📊 **Admin Dashboard**: View test transactions and statistics
 - 📚 **Documentation**: Complete integration guides and examples
+- 🔒 **Backend Proxy**: Secure credential management and API communication
 
 ## Quick Start
 
@@ -123,20 +125,38 @@ Then navigate to http://localhost:8000/demo/
 │   ├── dist/               # Built SDK (generated)
 │   ├── webpack.config.js   # Build configuration
 │   └── package.json
-├── gateway/                # Test Payment Gateway
-│   ├── server.js          # Express server
+├── gateway/                # Payment Gateway Backend
+│   ├── server.js           # Express server
 │   ├── routes/
-│   │   ├── payments.js    # Payment endpoints
-│   │   └── tokens.js      # Token endpoints
+│   │   ├── payments.js     # Test payment endpoints
+│   │   ├── payment-gateway.js  # Real gateway integration
+│   │   └── tokens.js       # Token endpoints
+│   ├── services/
+│   │   ├── gateway-client.js   # Gateway API client
+│   │   ├── auth-helper.js      # Authentication & signatures
+│   │   └── signature.js        # Signature utilities
+│   ├── middleware/
+│   │   ├── auth.js         # Authentication middleware
+│   │   ├── validator.js    # Input validation
+│   │   └── rate-limit.js   # Rate limiting
 │   ├── models/
-│   │   └── transaction.js # Transaction storage
+│   │   └── transaction.js  # Transaction storage
+│   ├── config/
+│   │   └── config.js       # Configuration
 │   └── package.json
 ├── demo/                   # Demo and Examples
-│   ├── index.html         # Main demo
+│   ├── index.html          # Main demo
 │   └── merchant-example.html
 ├── docs/                   # Documentation
-│   └── README.md          # Full documentation
-└── package.json           # Root package.json
+│   ├── README.md           # SDK documentation
+│   ├── API.md              # API reference
+│   ├── INTEGRATION.md      # Integration guide
+│   └── AUTHENTICATION.md   # Authentication guide
+├── test/                   # Tests
+│   ├── test-auth-helper.js # Auth helper tests
+│   └── test-gateway-client.js  # Gateway client tests
+├── .env.example            # Environment variables template
+└── package.json            # Root package.json
 ```
 
 ## Test Cards
@@ -192,46 +212,62 @@ pso.showPaymentForm({
 
 ### API Endpoints
 
-#### POST /api/payments/process
-Process a payment transaction.
+#### Backend Proxy Endpoints
 
+**Create Payment Order**
 ```bash
-curl -X POST http://localhost:3000/api/payments/process \
-  -H "Content-Type: application/json" \
-  -H "X-Merchant-ID: merchant-001" \
-  -d '{
-    "cardNumber": "4111111111111111",
-    "expiry": "12/25",
-    "cvv": "123",
-    "cardholderName": "John Doe",
-    "amount": 2999,
-    "currency": "USD"
-  }'
+POST /api/payment/create
+Content-Type: application/json
+
+{
+  "orderId": "order-123",
+  "amount": 1000.00,
+  "currency": "BDT",
+  "customerInfo": {
+    "name": "Customer Name",
+    "email": "customer@email.com",
+    "phone": "+8801234567890"
+  }
+}
 ```
 
-#### GET /api/payments/verify/:transactionId
-Verify a payment transaction.
-
+**Verify Payment**
 ```bash
-curl http://localhost:3000/api/payments/verify/transaction-id \
-  -H "X-Merchant-ID: merchant-001"
+POST /api/payment/verify
+Content-Type: application/json
+
+{
+  "paymentOrderId": "pso-payment-order-id"
+}
 ```
 
-#### GET /api/payments/transactions
-Get all transactions (admin endpoint).
-
+**IPN Endpoint**
 ```bash
-curl http://localhost:3000/api/payments/transactions
+POST /api/payment/ipn
+Content-Type: application/json
+
+{
+  "order_id": "order-123",
+  "status": "APPROVED",
+  "status_code": "1002",
+  "transaction_id": "bank-txn-id"
+}
 ```
+
+See [docs/API.md](./docs/API.md) for complete API reference.
 
 ## Security Features
 
+- ✅ **Header-Based Authentication**: HMAC-SHA256 signature authentication
+- ✅ **Signature Generation**: Dynamic per-request signatures
+- ✅ **Digest Validation**: SHA256 hash of request body
 - ✅ **Input Validation**: All payment data validated before processing
 - ✅ **Luhn Algorithm**: Card number validation using industry-standard algorithm
 - ✅ **XSS Protection**: All inputs sanitized to prevent cross-site scripting
 - ✅ **HTTPS Enforcement**: Production mode requires HTTPS
 - ✅ **CORS Support**: Configured for cross-domain requests
-- ✅ **Merchant Authentication**: API requests require merchant ID
+- ✅ **Rate Limiting**: Protects against abuse and DDoS
+- ✅ **Backend Proxy**: Credentials never exposed to frontend
 
 ## Development
 
@@ -256,6 +292,17 @@ npm run dev        # Build SDK and start gateway
 
 ## Testing
 
+### Run Authentication Tests
+```bash
+# Test signature and digest generation
+node test/test-auth-helper.js
+
+# Test gateway client integration
+node test/test-gateway-client.js
+```
+
+### Manual Testing
+
 The SDK includes comprehensive validation:
 - Card number validation (Luhn algorithm)
 - Expiry date validation (format and future date)
@@ -267,7 +314,7 @@ Test the gateway with:
 # Health check
 curl http://localhost:3000/health
 
-# Test payment
+# Test payment (mock endpoint)
 curl -X POST http://localhost:3000/api/payments/process \
   -H "Content-Type: application/json" \
   -H "X-Merchant-ID: test" \
@@ -277,10 +324,11 @@ curl -X POST http://localhost:3000/api/payments/process \
 ## Documentation
 
 Full documentation is available in the `docs/` directory:
-- [Complete SDK Documentation](docs/README.md)
-- [API Reference](docs/README.md#sdk-reference)
-- [Integration Examples](docs/README.md#examples)
-- [Troubleshooting Guide](docs/README.md#troubleshooting)
+- 📖 [Complete SDK Documentation](docs/README.md)
+- 🔐 [Authentication Guide](docs/AUTHENTICATION.md) - Header-based authentication
+- 📡 [API Reference](docs/API.md) - Complete API documentation
+- 🔧 [Integration Guide](docs/INTEGRATION.md) - Step-by-step integration
+- ❓ [Troubleshooting Guide](docs/README.md#troubleshooting)
 
 ## Browser Support
 
