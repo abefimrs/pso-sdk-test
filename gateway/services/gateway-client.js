@@ -1,30 +1,30 @@
 /**
  * Payment Gateway API Client
- * Handles communication with the real payment gateway API
+ * Handles communication with the real payment gateway API using header-based authentication
  */
 
 const axios = require('axios');
 const config = require('../config/config');
+const authHelper = require('./auth-helper');
 
 class GatewayClient {
   constructor() {
     this.baseUrl = config.gateway.baseUrl;
-    this.username = config.gateway.username;
-    this.password = config.gateway.password;
-    this.signature = config.gateway.signature;
-    this.merchantCode = config.gateway.merchantCode;
+    this.host = config.gateway.host;
+    this.merchantId = config.gateway.merchantId;
+    this.apiKey = config.gateway.apiKey;
+    this.apiSecret = config.gateway.apiSecret;
   }
 
   /**
-   * Get authentication object for API requests
+   * Get configuration object for auth helper
    */
-  getAuthPayload() {
+  getAuthConfig() {
     return {
-      security: {
-        username: this.username,
-        password: this.password
-      },
-      signature: this.signature
+      host: this.host,
+      merchantId: this.merchantId,
+      apiKey: this.apiKey,
+      apiSecret: this.apiSecret
     };
   }
 
@@ -34,10 +34,11 @@ class GatewayClient {
    * @returns {Promise<Object>} - Gateway response
    */
   async createPaymentOrder(orderData) {
-    const endpoint = `${this.baseUrl}${config.gateway.endpoints.createOrder}`;
+    const endpoint = config.gateway.endpoints.createOrder;
+    const fullUrl = `${this.baseUrl}${endpoint}`;
     
-    const payload = {
-      ...this.getAuthPayload(),
+    // Build request body without authentication credentials
+    const requestBody = {
       order_id: orderData.orderId,
       order_information: {
         payable_amount: orderData.amount,
@@ -61,10 +62,15 @@ class GatewayClient {
     };
 
     try {
-      const response = await axios.post(endpoint, payload, {
-        headers: {
-          'Content-Type': 'application/json'
-        },
+      // Generate authentication headers
+      const headers = authHelper.generateGatewayHeaders(
+        endpoint,
+        requestBody,
+        this.getAuthConfig()
+      );
+
+      const response = await axios.post(fullUrl, requestBody, {
+        headers,
         timeout: 30000 // 30 seconds
       });
 
@@ -101,24 +107,28 @@ class GatewayClient {
 
   /**
    * Verify a payment
-   * @param {Object} verificationData - Verification details
+   * @param {Object} verificationData - Verification details (paymentOrderId)
    * @returns {Promise<Object>} - Gateway response
    */
   async verifyPayment(verificationData) {
-    const endpoint = `${this.baseUrl}${config.gateway.endpoints.verify}`;
+    const endpoint = config.gateway.endpoints.verify;
+    const fullUrl = `${this.baseUrl}${endpoint}`;
     
-    const payload = {
-      ...this.getAuthPayload(),
-      order_id: verificationData.orderId,
-      order_tracking_id: verificationData.orderTrackingId,
-      merchant_code: this.merchantCode
+    // Simplified request body - only paymentOrderId required
+    const requestBody = {
+      paymentOrderId: verificationData.paymentOrderId
     };
 
     try {
-      const response = await axios.post(endpoint, payload, {
-        headers: {
-          'Content-Type': 'application/json'
-        },
+      // Generate authentication headers
+      const headers = authHelper.generateGatewayHeaders(
+        endpoint,
+        requestBody,
+        this.getAuthConfig()
+      );
+
+      const response = await axios.post(fullUrl, requestBody, {
+        headers,
         timeout: 30000
       });
 
@@ -159,19 +169,25 @@ class GatewayClient {
    * @returns {Promise<Object>} - Gateway response
    */
   async inquirePayment(inquiryData) {
-    const endpoint = `${this.baseUrl}${config.gateway.endpoints.inquiry}`;
+    const endpoint = config.gateway.endpoints.inquiry;
+    const fullUrl = `${this.baseUrl}${endpoint}`;
     
-    const payload = {
-      ...this.getAuthPayload(),
+    // Build request body without authentication credentials
+    const requestBody = {
       order_id: inquiryData.orderId,
-      merchant_code: this.merchantCode
+      merchant_code: this.merchantId
     };
 
     try {
-      const response = await axios.post(endpoint, payload, {
-        headers: {
-          'Content-Type': 'application/json'
-        },
+      // Generate authentication headers
+      const headers = authHelper.generateGatewayHeaders(
+        endpoint,
+        requestBody,
+        this.getAuthConfig()
+      );
+
+      const response = await axios.post(fullUrl, requestBody, {
+        headers,
         timeout: 30000
       });
 

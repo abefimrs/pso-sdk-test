@@ -37,15 +37,11 @@ function validatePaymentCreation(req, res, next) {
  * Validate payment verification request
  */
 function validatePaymentVerification(req, res, next) {
-  const { orderId, orderTrackingId } = req.body;
+  const { paymentOrderId } = req.body;
   const errors = [];
 
-  if (!orderId || typeof orderId !== 'string') {
-    errors.push('orderId is required and must be a string');
-  }
-
-  if (!orderTrackingId || typeof orderTrackingId !== 'string') {
-    errors.push('orderTrackingId is required and must be a string');
+  if (!paymentOrderId || typeof paymentOrderId !== 'string') {
+    errors.push('paymentOrderId is required and must be a string');
   }
 
   if (errors.length > 0) {

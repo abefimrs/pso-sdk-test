@@ -10,9 +10,15 @@ const config = {
   env: process.env.NODE_ENV || 'development',
   port: process.env.PORT || 3000,
   
-  // Gateway API Configuration
+  // Gateway API Configuration (Header-Based Authentication)
   gateway: {
     baseUrl: process.env.GATEWAY_BASE_URL || 'https://api-stage.tnextpay.com',
+    host: process.env.GATEWAY_HOST || 'api-stage.tnextpay.com',
+    merchantId: process.env.MERCHANT_ID || '',
+    apiKey: process.env.API_KEY || '',
+    apiSecret: process.env.API_SECRET || '',
+    
+    // Legacy: Backward compatibility (deprecated)
     username: process.env.GATEWAY_USERNAME || '',
     password: process.env.GATEWAY_PASSWORD || '',
     signature: process.env.GATEWAY_SIGNATURE || '',
@@ -44,10 +50,12 @@ const config = {
     const errors = [];
     
     if (this.env === 'production') {
-      if (!this.gateway.username) errors.push('GATEWAY_USERNAME is required in production');
-      if (!this.gateway.password) errors.push('GATEWAY_PASSWORD is required in production');
-      if (!this.gateway.signature) errors.push('GATEWAY_SIGNATURE is required in production');
-      if (!this.gateway.merchantCode) errors.push('MERCHANT_CODE is required in production');
+      // New header-based authentication (required)
+      if (!this.gateway.merchantId) errors.push('MERCHANT_ID is required in production');
+      if (!this.gateway.apiKey) errors.push('API_KEY is required in production');
+      if (!this.gateway.apiSecret) errors.push('API_SECRET is required in production');
+      if (!this.gateway.host) errors.push('GATEWAY_HOST is required in production');
+      
       if (this.security.jwtSecret === 'change-this-secret-in-production') {
         errors.push('JWT_SECRET must be changed in production');
       }
