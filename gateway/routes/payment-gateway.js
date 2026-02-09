@@ -26,39 +26,50 @@ router.post('/create',
   validatePaymentCreation,
   async (req, res) => {
     try {
+      // Accept both SDK format and direct API format
       const {
-        orderId,
-        amount,
-        currency,
-        customerInfo,
-        productInfo,
-        ipnUrl,
-        successUrl,
-        cancelUrl,
-        failureUrl,
-        customFields,
-        promotionInfo,
-        discountDetail,
-        shipmentInfo
+        order_id,
+        order_information,
+        customer_information,
+        product_information,
+        promotion_information,
+        discount_detail,
+        shipment_information,
+        ipn_url,
+        success_url,
+        cancel_url,
+        failure_url,
+        mdf_1, mdf_2, mdf_3, mdf_4, mdf_5, mdf_6
       } = req.body;
+
+      const orderId = order_id;
+      const amount = order_information?.payable_amount;
+      const currency = order_information?.currency_code;
 
       console.log(`[Payment Create] Merchant: ${req.merchantId}, Order: ${orderId}`);
 
-      // Prepare order data for gateway
+      // Prepare order data for gateway using exact API specification
       const orderData = {
         orderId,
         amount,
         currency: currency || 'BDT',
-        customerInfo: customerInfo || {},
-        productInfo: productInfo || {},
-        ipnUrl: ipnUrl || `${req.protocol}://${req.get('host')}/api/payment/ipn`,
-        successUrl: successUrl || `${req.protocol}://${req.get('host')}/payment/success`,
-        cancelUrl: cancelUrl || `${req.protocol}://${req.get('host')}/payment/cancel`,
-        failureUrl: failureUrl || `${req.protocol}://${req.get('host')}/payment/failure`,
-        customFields: customFields || {},
-        promotionInfo: promotionInfo || {},
-        discountDetail: discountDetail || {},
-        shipmentInfo: shipmentInfo || {}
+        customerInfo: customer_information || {},
+        productInfo: product_information || {},
+        ipnUrl: ipn_url || `${req.protocol}://${req.get('host')}/api/payment/ipn`,
+        successUrl: success_url || `${req.protocol}://${req.get('host')}/payment/success`,
+        cancelUrl: cancel_url || `${req.protocol}://${req.get('host')}/payment/cancel`,
+        failureUrl: failure_url || `${req.protocol}://${req.get('host')}/payment/failure`,
+        customFields: {
+          mdf_1: mdf_1 || '',
+          mdf_2: mdf_2 || '',
+          mdf_3: mdf_3 || '',
+          mdf_4: mdf_4 || '',
+          mdf_5: mdf_5 || '',
+          mdf_6: mdf_6 || ''
+        },
+        promotionInfo: promotion_information,
+        discountDetail: discount_detail,
+        shipmentInfo: shipment_information
       };
 
       // Call real gateway API
@@ -309,6 +320,122 @@ router.get('/status/:orderId',
       return res.status(500).json({
         success: false,
         message: 'Internal server error',
+        error: error.message
+      });
+    }
+  }
+);
+
+/**
+ * Create Payment Order (TNPG API Endpoint)
+ * POST /payment-order
+ * 
+ * TNPG-compliant endpoint that accepts requests from SDK
+ * This route is mounted at: /payment/api/v1/p/service/api/payment/processing/payment-order
+ */
+router.post('/payment-order',
+  paymentCreationLimiter,
+  validateMerchant,
+  sanitizeInput,
+  validatePaymentCreation,
+  async (req, res) => {
+    try {
+      const {
+        order_id,
+        order_information,
+        customer_information,
+        product_information,
+        promotion_information,
+        discount_detail,
+        shipment_information,
+        ipn_url,
+        success_url,
+        cancel_url,
+        failure_url,
+        mdf_1, mdf_2, mdf_3, mdf_4, mdf_5, mdf_6
+      } = req.body;
+
+      const orderId = order_id;
+      const amount = order_information?.payable_amount;
+      const currency = order_information?.currency_code;
+
+      console.log(`[TNPG Payment Order] Merchant: ${req.merchantId}, Order: ${orderId}`);
+
+      // Prepare order data for gateway with TNPG authentication headers
+      const orderData = {
+        orderId,
+        amount,
+        currency: currency || 'BDT',
+        customerInfo: customer_information || {},
+        productInfo: product_information || {},
+        ipnUrl: ipn_url || `${req.protocol}://${req.get('host')}/api/payment/ipn`,
+        successUrl: success_url || `${req.protocol}://${req.get('host')}/payment/success`,
+        cancelUrl: cancel_url || `${req.protocol}://${req.get('host')}/payment/cancel`,
+        failureUrl: failure_url || `${req.protocol}://${req.get('host')}/payment/failure`,
+        customFields: {
+          mdf_1: mdf_1 || '',
+          mdf_2: mdf_2 || '',
+          mdf_3: mdf_3 || '',
+          mdf_4: mdf_4 || '',
+          mdf_5: mdf_5 || '',
+          mdf_6: mdf_6 || ''
+        },
+        promotionInfo: promotion_information,
+        discountDetail: discount_detail,
+        shipmentInfo: shipment_information
+      };
+
+      // Call real gateway API with TNPG headers
+      const gatewayResponse = await gatewayClient.createPaymentOrder(orderData);
+
+      if (!gatewayResponse.success) {
+        console.error('[TNPG Payment Order] Gateway error:', gatewayResponse.error);
+        
+        return res.status(gatewayResponse.error.statusCode || 500).json({
+          success: false,
+          message: gatewayResponse.error.message,
+          reason: gatewayResponse.error.reason,
+          statusCode: gatewayResponse.error.statusCode,
+          statusText: gatewayResponse.error.statusText
+        });
+      }
+
+      // Store transaction locally
+      const transaction = {
+        id: gatewayResponse.data.order_detail?.payment_order_id || uuidv4(),
+        merchantId: req.merchantId,
+        orderId,
+        amount,
+        currency: currency || 'BDT',
+        status: gatewayResponse.data.order_detail?.order_status || 'PENDING',
+        sessionId: gatewayResponse.data.order_detail?.session_id,
+        gatewayPageUrl: gatewayResponse.data.gateway_page_url,
+        token: gatewayResponse.data.token_response?.token,
+        timestamp: new Date().toISOString(),
+        customerInfo: customer_information,
+        productInfo: product_information
+      };
+
+      transactionStore.create(transaction);
+
+      console.log(`[TNPG Payment Order] Success - Transaction: ${transaction.id}`);
+
+      // Return TNPG-compliant response
+      return res.json({
+        success: true,
+        transactionId: transaction.id,
+        sessionId: transaction.sessionId,
+        gatewayPageUrl: transaction.gatewayPageUrl,
+        token: transaction.token,
+        orderDetail: gatewayResponse.data.order_detail
+      });
+
+    } catch (error) {
+      console.error('[TNPG Payment Order] Error:', error);
+      
+      return res.status(500).json({
+        success: false,
+        message: 'Internal server error during payment creation',
         error: error.message
       });
     }

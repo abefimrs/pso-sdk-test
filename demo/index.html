@@ -185,18 +185,18 @@
   <div class="demo-container">
     <div class="badge">🧪 Test Environment</div>
     <h1>PSO Payment SDK Demo</h1>
-    <p class="subtitle">Experience secure payment processing with our in-host pop-up</p>
+    <p class="subtitle">Experience secure payment processing with gateway redirect & 3DS support</p>
 
     <div class="product-card">
       <div class="product-name">Premium Subscription</div>
       <div class="product-description">
         Get unlimited access to all premium features with our monthly subscription plan.
       </div>
-      <div class="product-price">$29.99</div>
+      <div class="product-price">৳2,999.00</div>
     </div>
 
     <button class="btn" onclick="initiatePayment()">
-      💳 Pay with PSO
+      💳 Pay with PSO Gateway
     </button>
 
     <button class="btn btn-secondary" onclick="initiateCustomPayment()">
@@ -206,12 +206,13 @@
     <div id="result" class="result"></div>
 
     <div class="test-cards">
-      <h3>Test Card Numbers</h3>
+      <h3>How It Works</h3>
       <ul>
-        <li><code>4111111111111111</code> - Success</li>
-        <li><code>4000000000000002</code> - Declined (Insufficient funds)</li>
-        <li><code>4000000000000119</code> - Processing Error</li>
-        <li>Any expiry (future date), CVV (3 digits), Name (min 3 chars)</li>
+        <li>Click "Pay with PSO Gateway" to initiate payment</li>
+        <li>A secure popup will open with the payment gateway</li>
+        <li>Enter your payment details (card/mobile wallet/etc.)</li>
+        <li>Complete 3DS authentication if required</li>
+        <li>Payment confirmation will be shown after completion</li>
       </ul>
     </div>
 
@@ -236,15 +237,25 @@
       clearResult();
       
       pso.showPaymentForm({
-        amount: 2999, // $29.99 in cents
-        currency: 'USD',
+        orderId: 'ORDER-' + Date.now(),
+        amount: 2999, // BDT 29.99
+        currency: 'BDT',
+        customerInfo: {
+          name: 'John Doe',
+          email: 'john@example.com',
+          phone: '+8801712345678'
+        },
+        productInfo: {
+          name: 'Premium Subscription',
+          description: 'Monthly subscription plan'
+        },
         onSuccess: (result) => {
           console.log('Payment successful:', result);
           showResult('success', `
             <strong>Payment Successful!</strong><br>
             Transaction ID: ${result.transactionId}<br>
-            Amount: ${result.currency} ${(result.amount / 100).toFixed(2)}<br>
-            Time: ${new Date(result.timestamp).toLocaleString()}
+            Session ID: ${result.sessionId || 'N/A'}<br>
+            Status: ${result.status || 'Completed'}
           `);
         },
         onError: (error) => {
@@ -253,11 +264,71 @@
             <strong>Payment Failed</strong><br>
             ${error.message || 'An error occurred during payment processing'}
           `);
+        },
+        onCancel: () => {
+          console.log('Payment cancelled');
+          showResult('info', 'Payment was cancelled by user');
         }
       });
     }
 
     function initiateCustomPayment() {
+      clearResult();
+      
+      const amount = prompt('Enter amount in BDT (e.g., 100):', '100');
+      if (!amount || isNaN(amount) || parseFloat(amount) <= 0) {
+        showResult('error', 'Invalid amount entered');
+        return;
+      }
+
+      pso.showPaymentForm({
+        orderId: 'ORDER-CUSTOM-' + Date.now(),
+        amount: parseFloat(amount),
+        currency: 'BDT',
+        customerInfo: {
+          name: 'Custom Order',
+          email: 'customer@example.com'
+        },
+        productInfo: {
+          name: 'Custom Payment',
+          description: 'Custom amount payment'
+        },
+        onSuccess: (result) => {
+          console.log('Payment successful:', result);
+          showResult('success', `
+            <strong>Payment Successful!</strong><br>
+            Transaction ID: ${result.transactionId}<br>
+            Amount: BDT ${amount}
+          `);
+        },
+        onError: (error) => {
+          console.error('Payment failed:', error);
+          showResult('error', `
+            <strong>Payment Failed</strong><br>
+            ${error.message || 'An error occurred during payment processing'}
+          `);
+        },
+        onCancel: () => {
+          console.log('Payment cancelled');
+          showResult('info', 'Payment was cancelled by user');
+        }
+      });
+    }
+
+    function showResult(type, message) {
+      const resultDiv = document.getElementById('result');
+      resultDiv.className = `result ${type}`;
+      resultDiv.innerHTML = message;
+      resultDiv.style.display = 'block';
+    }
+
+    function clearResult() {
+      const resultDiv = document.getElementById('result');
+      resultDiv.style.display = 'none';
+    }
+  </script>
+</body>
+</html>
       const amount = prompt('Enter amount in dollars (e.g., 49.99):', '49.99');
       
       if (!amount) {

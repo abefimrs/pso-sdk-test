@@ -1,20 +1,22 @@
 /**
  * Payment Pop-up Manager
- * Handles creation, display, and management of the in-host payment pop-up
+ * Handles opening gateway URL in popup/iframe and monitoring payment completion
  */
-
-import { Validator } from './validation.js';
 
 export class PaymentPopup {
   constructor(config) {
     this.config = config;
     this.overlay = null;
     this.popup = null;
+    this.iframe = null;
+    this.popupWindow = null;
     this.isOpen = false;
+    this.messageListener = null;
+    this.intervalCheck = null;
   }
 
   /**
-   * Show the payment pop-up
+   * Show the payment pop-up with gateway URL
    */
   show(options) {
     if (this.isOpen) {
@@ -22,19 +24,33 @@ export class PaymentPopup {
     }
 
     this.options = options;
-    this.createOverlay();
-    this.createPopup();
-    this.attachEventListeners();
+    
+    // Decide between iframe (default) or popup window
+    const usePopupWindow = this.config.usePopupWindow || false;
+    
+    if (usePopupWindow) {
+      this.openPopupWindow();
+    } else {
+      this.createOverlay();
+      this.createIframePopup();
+      this.attachEventListeners();
+    }
+    
     this.isOpen = true;
+    
+    // Listen for payment completion messages
+    this.setupMessageListener();
 
-    // Prevent body scrolling
-    document.body.style.overflow = 'hidden';
+    // Prevent body scrolling when using overlay
+    if (!usePopupWindow) {
+      document.body.style.overflow = 'hidden';
 
-    // Trigger animation
-    setTimeout(() => {
-      this.overlay.classList.add('pso-active');
-      this.popup.classList.add('pso-active');
-    }, 10);
+      // Trigger animation
+      setTimeout(() => {
+        this.overlay.classList.add('pso-active');
+        this.popup.classList.add('pso-active');
+      }, 10);
+    }
   }
 
   /**
@@ -45,18 +61,90 @@ export class PaymentPopup {
       return;
     }
 
-    this.overlay.classList.remove('pso-active');
-    this.popup.classList.remove('pso-active');
+    // Clean up message listener
+    if (this.messageListener) {
+      window.removeEventListener('message', this.messageListener);
+      this.messageListener = null;
+    }
 
-    setTimeout(() => {
-      if (this.overlay && this.overlay.parentNode) {
-        this.overlay.parentNode.removeChild(this.overlay);
+    // Clean up popup window check interval
+    if (this.intervalCheck) {
+      clearInterval(this.intervalCheck);
+      this.intervalCheck = null;
+    }
+
+    // Close popup window if open
+    if (this.popupWindow && !this.popupWindow.closed) {
+      this.popupWindow.close();
+      this.popupWindow = null;
+    }
+
+    // Close iframe overlay
+    if (this.overlay) {
+      this.overlay.classList.remove('pso-active');
+      if (this.popup) {
+        this.popup.classList.remove('pso-active');
       }
-      this.overlay = null;
-      this.popup = null;
+
+      setTimeout(() => {
+        if (this.overlay && this.overlay.parentNode) {
+          this.overlay.parentNode.removeChild(this.overlay);
+        }
+        this.overlay = null;
+        this.popup = null;
+        this.iframe = null;
+        this.isOpen = false;
+        document.body.style.overflow = '';
+      }, 300);
+    } else {
       this.isOpen = false;
-      document.body.style.overflow = '';
-    }, 300);
+    }
+  }
+
+  /**
+   * Open gateway URL in popup window
+   */
+  openPopupWindow() {
+    const width = 600;
+    const height = 700;
+    const left = (window.screen.width - width) / 2;
+    const top = (window.screen.height - height) / 2;
+
+    const features = `width=${width},height=${height},left=${left},top=${top},toolbar=no,menubar=no,scrollbars=yes,resizable=yes`;
+
+    this.popupWindow = window.open(
+      this.options.gatewayUrl,
+      'PSOPaymentGateway',
+      features
+    );
+
+    if (!this.popupWindow) {
+      // Popup blocked - fallback to iframe
+      console.warn('[PSO SDK] Popup blocked, falling back to iframe');
+      this.createOverlay();
+      this.createIframePopup();
+      this.attachEventListeners();
+      document.body.style.overflow = 'hidden';
+      setTimeout(() => {
+        this.overlay.classList.add('pso-active');
+        this.popup.classList.add('pso-active');
+      }, 10);
+      return;
+    }
+
+    // Check if popup is closed
+    this.intervalCheck = setInterval(() => {
+      if (this.popupWindow && this.popupWindow.closed) {
+        clearInterval(this.intervalCheck);
+        this.intervalCheck = null;
+        this.handleCancel();
+      }
+    }, 500);
+
+    // Focus on popup
+    if (this.popupWindow.focus) {
+      this.popupWindow.focus();
+    }
   }
 
   /**
@@ -65,108 +153,45 @@ export class PaymentPopup {
   createOverlay() {
     this.overlay = document.createElement('div');
     this.overlay.className = 'pso-overlay';
-    this.overlay.addEventListener('click', (e) => {
-      if (e.target === this.overlay) {
-        this.close();
-      }
-    });
     document.body.appendChild(this.overlay);
   }
 
   /**
-   * Create popup element with payment form
+   * Create popup with iframe showing gateway page
    */
-  createPopup() {
+  createIframePopup() {
     this.popup = document.createElement('div');
-    this.popup.className = 'pso-popup';
-    this.popup.innerHTML = this.getPopupHTML();
+    this.popup.className = 'pso-popup pso-popup-iframe';
+    this.popup.innerHTML = this.getIframePopupHTML();
     this.overlay.appendChild(this.popup);
+
+    // Get iframe element
+    this.iframe = this.popup.querySelector('#pso-gateway-iframe');
   }
 
   /**
-   * Get HTML content for popup
+   * Get HTML content for iframe popup
    */
-  getPopupHTML() {
-    const amount = this.formatAmount(this.options.amount, this.options.currency);
-    
+  getIframePopupHTML() {
     return `
       <div class="pso-header">
         <h2>Secure Payment</h2>
         <button class="pso-close" type="button">&times;</button>
       </div>
-      <div class="pso-body">
-        <div class="pso-amount">
-          <span class="pso-label">Amount:</span>
-          <span class="pso-value">${amount}</span>
-        </div>
-        <form id="pso-payment-form" class="pso-form">
-          <div class="pso-field">
-            <label for="pso-card-number">Card Number</label>
-            <input 
-              type="text" 
-              id="pso-card-number" 
-              name="cardNumber"
-              placeholder="1234 5678 9012 3456"
-              maxlength="23"
-              autocomplete="cc-number"
-              required
-            />
-            <div class="pso-error" id="pso-card-number-error"></div>
-          </div>
-          
-          <div class="pso-row">
-            <div class="pso-field pso-field-half">
-              <label for="pso-expiry">Expiry Date</label>
-              <input 
-                type="text" 
-                id="pso-expiry" 
-                name="expiry"
-                placeholder="MM/YY"
-                maxlength="5"
-                autocomplete="cc-exp"
-                required
-              />
-              <div class="pso-error" id="pso-expiry-error"></div>
-            </div>
-            
-            <div class="pso-field pso-field-half">
-              <label for="pso-cvv">CVV</label>
-              <input 
-                type="text" 
-                id="pso-cvv" 
-                name="cvv"
-                placeholder="123"
-                maxlength="4"
-                autocomplete="cc-csc"
-                required
-              />
-              <div class="pso-error" id="pso-cvv-error"></div>
-            </div>
-          </div>
-          
-          <div class="pso-field">
-            <label for="pso-cardholder">Cardholder Name</label>
-            <input 
-              type="text" 
-              id="pso-cardholder" 
-              name="cardholderName"
-              placeholder="John Doe"
-              autocomplete="cc-name"
-              required
-            />
-            <div class="pso-error" id="pso-cardholder-error"></div>
-          </div>
-          
-          <button type="submit" class="pso-submit-btn" id="pso-submit-btn">
-            Pay ${amount}
-          </button>
-        </form>
-        
-        <div class="pso-loading" id="pso-loading" style="display: none;">
+      <div class="pso-body pso-iframe-container">
+        <div class="pso-loading" id="pso-loading">
           <div class="pso-spinner"></div>
-          <p>Processing payment...</p>
+          <p>Loading payment gateway...</p>
         </div>
-        
+        <iframe 
+          id="pso-gateway-iframe" 
+          src="${this.options.gatewayUrl}" 
+          frameborder="0"
+          allow="payment"
+          sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-top-navigation"
+        ></iframe>
+      </div>
+      <div class="pso-footer">
         <div class="pso-security-info">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
             <path d="M8 0L2 3v4c0 3.5 2.5 6.5 6 7 3.5-.5 6-3.5 6-7V3L8 0z"/>
@@ -178,219 +203,168 @@ export class PaymentPopup {
   }
 
   /**
-   * Attach event listeners to form elements
+   * Attach event listeners
    */
   attachEventListeners() {
     // Close button
     const closeBtn = this.popup.querySelector('.pso-close');
-    closeBtn.addEventListener('click', () => this.close());
-
-    // Form submission
-    const form = this.popup.querySelector('#pso-payment-form');
-    form.addEventListener('submit', (e) => this.handleSubmit(e));
-
-    // Real-time validation
-    const cardNumberInput = this.popup.querySelector('#pso-card-number');
-    const expiryInput = this.popup.querySelector('#pso-expiry');
-    const cvvInput = this.popup.querySelector('#pso-cvv');
-    const cardholderInput = this.popup.querySelector('#pso-cardholder');
-
-    // Card number formatting and validation
-    cardNumberInput.addEventListener('input', (e) => {
-      let value = e.target.value.replace(/\s/g, '');
-      e.target.value = Validator.formatCardNumber(value);
-      this.validateField('cardNumber', e.target.value);
+    closeBtn.addEventListener('click', () => {
+      this.handleCancel();
     });
 
-    // Expiry formatting and validation
-    expiryInput.addEventListener('input', (e) => {
-      e.target.value = Validator.formatExpiry(e.target.value);
-      this.validateField('expiry', e.target.value);
-    });
-
-    // CVV validation
-    cvvInput.addEventListener('input', (e) => {
-      e.target.value = e.target.value.replace(/\D/g, '');
-      this.validateField('cvv', e.target.value);
-    });
-
-    // Cardholder name validation
-    cardholderInput.addEventListener('blur', (e) => {
-      this.validateField('cardholderName', e.target.value);
-    });
+    // Iframe load event
+    if (this.iframe) {
+      this.iframe.addEventListener('load', () => {
+        const loading = this.popup.querySelector('#pso-loading');
+        if (loading) {
+          loading.style.display = 'none';
+        }
+      });
+    }
   }
 
   /**
-   * Validate individual field
+   * Setup message listener for payment completion
    */
-  validateField(fieldName, value) {
-    let result;
-    let errorElement;
+  setupMessageListener() {
+    this.messageListener = (event) => {
+      // Verify origin if needed
+      // if (event.origin !== this.expectedOrigin) return;
 
-    switch (fieldName) {
-      case 'cardNumber':
-        result = Validator.validateCardNumber(value);
-        errorElement = this.popup.querySelector('#pso-card-number-error');
-        break;
-      case 'expiry':
-        result = Validator.validateExpiry(value);
-        errorElement = this.popup.querySelector('#pso-expiry-error');
-        break;
-      case 'cvv':
-        result = Validator.validateCVV(value);
-        errorElement = this.popup.querySelector('#pso-cvv-error');
-        break;
-      case 'cardholderName':
-        result = Validator.validateCardholderName(value);
-        errorElement = this.popup.querySelector('#pso-cardholder-error');
-        break;
-    }
+      const data = event.data;
 
-    if (errorElement) {
-      errorElement.textContent = result.message;
-      errorElement.style.display = result.message ? 'block' : 'none';
-    }
+      if (this.config.debug) {
+        console.log('[PSO SDK] Received message:', data);
+      }
 
-    return result.valid;
-  }
+      // Handle payment completion messages
+      if (data && typeof data === 'object') {
+        if (data.type === 'PAYMENT_SUCCESS' || data.status === 'SUCCESS' || data.success === true) {
+          this.handleSuccess(data);
+        } else if (data.type === 'PAYMENT_FAILURE' || data.status === 'FAILED' || data.success === false) {
+          this.handleError(data);
+        } else if (data.type === 'PAYMENT_CANCEL' || data.status === 'CANCELLED') {
+          this.handleCancel();
+        }
+      }
 
-  /**
-   * Handle form submission
-   */
-  async handleSubmit(e) {
-    e.preventDefault();
-
-    const formData = new FormData(e.target);
-    const data = {
-      cardNumber: formData.get('cardNumber'),
-      expiry: formData.get('expiry'),
-      cvv: formData.get('cvv'),
-      cardholderName: formData.get('cardholderName'),
-      amount: this.options.amount,
-      currency: this.options.currency
+      // Also listen for redirect URLs
+      if (typeof data === 'string') {
+        if (data.includes('success') || data.includes('payment-success')) {
+          this.handleSuccess({ redirectUrl: data });
+        } else if (data.includes('cancel') || data.includes('payment-cancel')) {
+          this.handleCancel();
+        } else if (data.includes('failure') || data.includes('payment-failure')) {
+          this.handleError({ redirectUrl: data });
+        }
+      }
     };
 
-    // Validate all fields
-    const validations = [
-      this.validateField('cardNumber', data.cardNumber),
-      this.validateField('expiry', data.expiry),
-      this.validateField('cvv', data.cvv),
-      this.validateField('cardholderName', data.cardholderName)
-    ];
+    window.addEventListener('message', this.messageListener);
 
-    if (!validations.every(v => v)) {
-      return;
+    // Also monitor URL changes for redirect detection
+    if (!this.config.usePopupWindow && this.iframe) {
+      this.monitorIframeRedirects();
     }
+  }
 
-    // Show loading state
-    this.setLoadingState(true);
-
+  /**
+   * Monitor iframe URL changes for payment completion
+   */
+  monitorIframeRedirects() {
+    // This is limited due to same-origin policy
+    // The gateway should send postMessage for best results
     try {
-      const result = await this.processPayment(data);
-      this.setLoadingState(false);
+      let lastUrl = this.options.gatewayUrl;
       
-      if (result.success) {
-        this.close();
-        if (this.options.onSuccess) {
-          this.options.onSuccess(result);
+      const checkUrl = setInterval(() => {
+        if (!this.iframe || !this.isOpen) {
+          clearInterval(checkUrl);
+          return;
         }
-      } else {
-        this.showError(result.message || 'Payment failed');
-        if (this.options.onError) {
-          this.options.onError(result);
+
+        try {
+          const currentUrl = this.iframe.contentWindow.location.href;
+          if (currentUrl !== lastUrl) {
+            lastUrl = currentUrl;
+            
+            // Check if redirected to success/failure/cancel URL
+            if (this.options.successUrl && currentUrl.includes(this.options.successUrl)) {
+              clearInterval(checkUrl);
+              this.handleSuccess({ redirectUrl: currentUrl });
+            } else if (this.options.failureUrl && currentUrl.includes(this.options.failureUrl)) {
+              clearInterval(checkUrl);
+              this.handleError({ redirectUrl: currentUrl });
+            } else if (this.options.cancelUrl && currentUrl.includes(this.options.cancelUrl)) {
+              clearInterval(checkUrl);
+              this.handleCancel();
+            }
+          }
+        } catch (e) {
+          // Cross-origin access blocked - expected
         }
-      }
-    } catch (error) {
-      this.setLoadingState(false);
-      this.showError(error.message || 'An error occurred');
-      if (this.options.onError) {
-        this.options.onError(error);
-      }
+      }, 500);
+    } catch (e) {
+      // Silently fail - cross-origin restrictions
     }
   }
 
   /**
-   * Process payment through gateway
+   * Handle successful payment
    */
-  async processPayment(data) {
-    const gatewayUrl = this.config.environment === 'production'
-      ? this.config.gatewayUrl || 'https://api.pso-gateway.com'
-      : this.config.gatewayUrl || 'http://localhost:3000';
-
-    const response = await fetch(`${gatewayUrl}/api/payments/process`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Merchant-ID': this.config.merchantId
-      },
-      body: JSON.stringify({
-        cardNumber: data.cardNumber.replace(/\s/g, ''),
-        expiry: data.expiry,
-        cvv: data.cvv,
-        cardholderName: data.cardholderName,
-        amount: data.amount,
-        currency: data.currency
-      })
-    });
-
-    if (!response.ok) {
-      throw new Error('Network error');
+  handleSuccess(data) {
+    if (this.config.debug) {
+      console.log('[PSO SDK] Payment successful:', data);
     }
 
-    return await response.json();
-  }
+    this.close();
 
-  /**
-   * Set loading state
-   */
-  setLoadingState(loading) {
-    const form = this.popup.querySelector('#pso-payment-form');
-    const loadingDiv = this.popup.querySelector('#pso-loading');
-    const submitBtn = this.popup.querySelector('#pso-submit-btn');
-
-    if (loading) {
-      form.style.display = 'none';
-      loadingDiv.style.display = 'block';
-      submitBtn.disabled = true;
-    } else {
-      form.style.display = 'block';
-      loadingDiv.style.display = 'none';
-      submitBtn.disabled = false;
+    if (this.options.onSuccess) {
+      this.options.onSuccess({
+        success: true,
+        transactionId: this.options.transactionId,
+        sessionId: this.options.sessionId,
+        ...data
+      });
     }
   }
 
   /**
-   * Show error message
+   * Handle payment error
    */
-  showError(message) {
-    const existingError = this.popup.querySelector('.pso-global-error');
-    if (existingError) {
-      existingError.remove();
+  handleError(data) {
+    if (this.config.debug) {
+      console.error('[PSO SDK] Payment failed:', data);
     }
 
-    const errorDiv = document.createElement('div');
-    errorDiv.className = 'pso-global-error';
-    errorDiv.textContent = message;
+    this.close();
 
-    const body = this.popup.querySelector('.pso-body');
-    body.insertBefore(errorDiv, body.firstChild);
-
-    setTimeout(() => {
-      errorDiv.remove();
-    }, 5000);
+    if (this.options.onError) {
+      this.options.onError({
+        success: false,
+        message: data.message || 'Payment failed',
+        transactionId: this.options.transactionId,
+        ...data
+      });
+    }
   }
 
   /**
-   * Format amount with currency
+   * Handle payment cancellation
    */
-  formatAmount(amount, currency) {
-    const formatted = (amount / 100).toFixed(2);
-    const symbols = {
-      'USD': '$',
-      'EUR': '€',
-      'GBP': '£'
-    };
-    const symbol = symbols[currency] || currency;
-    return `${symbol}${formatted}`;
+  handleCancel() {
+    if (this.config.debug) {
+      console.log('[PSO SDK] Payment cancelled');
+    }
+
+    this.close();
+
+    if (this.options.onCancel) {
+      this.options.onCancel({
+        success: false,
+        message: 'Payment cancelled by user',
+        transactionId: this.options.transactionId
+      });
+    }
   }
 }

@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PSO Payment Gateway - Complete Integration Example</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      padding: 40px;
+    }
+
+    h1 {
+      font-size: 32px;
+      margin-bottom: 10px;
+      color: #111827;
+    }
+
+    .subtitle {
+      color: #6b7280;
+      margin-bottom: 30px;
+      font-size: 16px;
+    }
+
+    .section {
+      margin-bottom: 30px;
+      padding: 20px;
+      background: #f9fafb;
+      border-radius: 8px;
+      border-left: 4px solid #667eea;
+    }
+
+    .section h3 {
+      margin-bottom: 15px;
+      color: #111827;
+    }
+
+    .form-group {
+      margin-bottom: 15px;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 5px;
+      color: #374151;
+      font-weight: 500;
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+
+    .form-group textarea {
+      resize: vertical;
+      min-height: 60px;
+    }
+
+    .btn {
+      background: #667eea;
+      color: white;
+      border: none;
+      padding: 14px 28px;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      width: 100%;
+      transition: background 0.2s;
+      margin-top: 10px;
+    }
+
+    .btn:hover {
+      background: #5568d3;
+    }
+
+    .btn-secondary {
+      background: white;
+      color: #667eea;
+      border: 2px solid #667eea;
+    }
+
+    .btn-secondary:hover {
+      background: #f9fafb;
+    }
+
+    .result {
+      margin-top: 20px;
+      padding: 15px;
+      border-radius: 8px;
+      display: none;
+    }
+
+    .result.success {
+      background: #d1fae5;
+      color: #065f46;
+      border: 1px solid #6ee7b7;
+    }
+
+    .result.error {
+      background: #fee2e2;
+      color: #991b1b;
+      border: 1px solid #fca5a5;
+    }
+
+    .result.info {
+      background: #dbeafe;
+      color: #1e40af;
+      border: 1px solid #93c5fd;
+    }
+
+    code {
+      background: #f3f4f6;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: 'Monaco', 'Courier New', monospace;
+      font-size: 12px;
+    }
+
+    pre {
+      background: #1f2937;
+      color: #f9fafb;
+      padding: 15px;
+      border-radius: 8px;
+      overflow-x: auto;
+      margin-top: 10px;
+      font-size: 12px;
+    }
+
+    .badge {
+      display: inline-block;
+      background: #dbeafe;
+      color: #1e40af;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-bottom: 20px;
+    }
+
+    .info-box {
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      padding: 15px;
+      border-radius: 8px;
+      margin-top: 15px;
+    }
+
+    .info-box h4 {
+      color: #1e40af;
+      margin-bottom: 10px;
+    }
+
+    .info-box ul {
+      margin-left: 20px;
+      color: #1e3a8a;
+    }
+
+    .info-box ul li {
+      margin-bottom: 5px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="badge">Complete API Integration Example</div>
+    <h1>PSO Payment Gateway Integration</h1>
+    <p class="subtitle">Full implementation following official Payment Gateway API Documentation</p>
+
+    <div class="section">
+      <h3>Order Information</h3>
+      <div class="form-group">
+        <label for="orderId">Order ID (auto-generated if empty)</label>
+        <input type="text" id="orderId" placeholder="Leave empty for auto-generation">
+      </div>
+      <div class="form-group">
+        <label for="amount">Amount (BDT) *</label>
+        <input type="number" id="amount" value="1000" step="0.01" required>
+      </div>
+      <div class="form-group">
+        <label for="currency">Currency Code *</label>
+        <select id="currency">
+          <option value="BDT" selected>BDT (Bangladeshi Taka)</option>
+          <option value="USD">USD (US Dollar)</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3>Customer Information</h3>
+      <div class="form-group">
+        <label for="customerName">Customer Name</label>
+        <input type="text" id="customerName" value="John Doe">
+      </div>
+      <div class="form-group">
+        <label for="customerEmail">Customer Email</label>
+        <input type="email" id="customerEmail" value="john.doe@example.com">
+      </div>
+      <div class="form-group">
+        <label for="customerPhone">Customer Phone</label>
+        <input type="tel" id="customerPhone" value="+8801712345678">
+      </div>
+      <div class="form-group">
+        <label for="customerAddress">Customer Address</label>
+        <textarea id="customerAddress">123 Main Street, Dhaka, Bangladesh</textarea>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3>Product Information</h3>
+      <div class="form-group">
+        <label for="productName">Product Name</label>
+        <input type="text" id="productName" value="Premium Subscription">
+      </div>
+      <div class="form-group">
+        <label for="productDescription">Product Description</label>
+        <textarea id="productDescription">Monthly premium subscription plan with unlimited access</textarea>
+      </div>
+      <div class="form-group">
+        <label for="productQuantity">Quantity</label>
+        <input type="number" id="productQuantity" value="1" min="1">
+      </div>
+    </div>
+
+    <div class="section">
+      <h3>Optional: Promotion & Discount</h3>
+      <div class="form-group">
+        <label for="preferredChannel">Preferred Payment Channel</label>
+        <select id="preferredChannel">
+          <option value="">-- None --</option>
+          <option value="VISA">VISA</option>
+          <option value="MASTERCARD">MASTERCARD</option>
+          <option value="BKASH">bKash</option>
+          <option value="NAGAD">Nagad</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="allowedBin">Allowed Card BIN (comma-separated)</label>
+        <input type="text" id="allowedBin" placeholder="e.g., 411111,424242">
+      </div>
+      <div class="form-group">
+        <label for="discountAmount">Discount Amount</label>
+        <input type="number" id="discountAmount" value="0" step="0.01">
+      </div>
+    </div>
+
+    <div class="section">
+      <h3>Custom Fields (MDF 1-6)</h3>
+      <div class="form-group">
+        <label for="mdf1">MDF 1 (Merchant Defined Field)</label>
+        <input type="text" id="mdf1" placeholder="Custom value 1">
+      </div>
+      <div class="form-group">
+        <label for="mdf2">MDF 2</label>
+        <input type="text" id="mdf2" placeholder="Custom value 2">
+      </div>
+      <div class="form-group">
+        <label for="mdf3">MDF 3</label>
+        <input type="text" id="mdf3" placeholder="Custom value 3">
+      </div>
+    </div>
+
+    <button class="btn" onclick="initiatePayment()">
+      Initiate Payment
+    </button>
+
+    <button class="btn btn-secondary" onclick="showRequestExample()">
+      Show Request Example
+    </button>
+
+    <div id="result" class="result"></div>
+
+    <div class="info-box">
+      <h4>API Endpoints</h4>
+      <ul>
+        <li><strong>Staging:</strong> <code>https://api-stage.tnextpay.com</code></li>
+        <li><strong>Local Gateway:</strong> <code>http://localhost:3000</code></li>
+        <li><strong>Create Order:</strong> <code>POST /payment/api/v1/p/service/api/payment/processing/payment-order</code></li>
+        <li><strong>Verify Payment:</strong> <code>POST /payment/api/v1/p/service/api/payment/processing/verify</code></li>
+      </ul>
+      <h4 style="margin-top: 15px;">Authentication Headers (auto-generated by gateway)</h4>
+      <ul>
+        <li><code>X-TNPG-TIMESTAMP</code>: Mon, 09 Feb 2026 07:47:49 GMT</li>
+        <li><code>X-TNPG-HOST</code>: http://192.168.169.162:8094</li>
+        <li><code>X-TNPG-TARGET-API</code>: POST /p/service/api/payment/processing/payment-order</li>
+        <li><code>X-TNPG-MERCHANT-ID</code>: M12345</li>
+        <li><code>X-TNPG-API-KEY</code>: test</li>
+        <li><code>X-TNPG-SIGNATURE</code>: base64-encoded-hmac-sha256</li>
+        <li><code>X-TNPG-DIGEST</code>: SHA-256=base64-hash</li>
+      </ul>
+    </div>
+
+    <div class="info-box">
+      <h4>Response Structure</h4>
+      <strong>Successful Order Creation:</strong>
+      <pre>{
+  "success": true,
+  "transactionId": "payment_order_id",
+  "sessionId": "session_id",
+  "gatewayPageUrl": "https://gateway.../payment/session",
+  "orderDetail": {
+    "payment_order_id": "...",
+    "order_status": "UNATTEMPTED",
+    "session_id": "..."
+  }
+}</pre>
+      <strong style="display: block; margin-top: 15px;">Payment Verification:</strong>
+      <pre>{
+  "success": true,
+  "transactionInfo": {
+    "status": "APPROVED|DECLINED|CANCELLED|FAILED",
+    "status_code": "1002|1003|1004|1005",
+    "order_id": "merchant_order_id",
+    "order_tracking_id": "pso_order_id",
+    "transaction_date": "Y-m-d H:i:s",
+    "bank_transaction_id": "...",
+    "amount": 1000.00,
+    "currency": "BDT",
+    "currency_amount": 1000.00,
+    "currency_type": "BDT",
+    "merchant_amount": 1000.00
+  }
+}</pre>
+    </div>
+  </div>
+
+  <!-- Load the PSO SDK -->
+  <script src="../sdk/dist/pso-sdk.js"></script>
+  
+  <script>
+    // Initialize the SDK
+    const pso = new PSOPayment({
+      merchantId: 'demo-merchant-001',
+      environment: 'test',
+      gatewayUrl: 'http://localhost:3000',
+      debug: true
+    });
+
+    function initiatePayment() {
+      clearResult();
+
+      // Collect form data
+      const orderId = document.getElementById('orderId').value || 'ORDER-' + Date.now();
+      const amount = parseFloat(document.getElementById('amount').value);
+      const currency = document.getElementById('currency').value;
+
+      // Validate amount
+      if (!amount || amount <= 0) {
+        showResult('error', 'Please enter a valid amount');
+        return;
+      }
+
+      // Build customer information
+      const customerInfo = {
+        name: document.getElementById('customerName').value,
+        email: document.getElementById('customerEmail').value,
+        phone: document.getElementById('customerPhone').value,
+        address: document.getElementById('customerAddress').value
+      };
+
+      // Build product information
+      const productInfo = {
+        name: document.getElementById('productName').value,
+        description: document.getElementById('productDescription').value,
+        quantity: parseInt(document.getElementById('productQuantity').value) || 1
+      };
+
+      // Build promotion information (if any)
+      const promotionInfo = {};
+      const preferredChannel = document.getElementById('preferredChannel').value;
+      const allowedBin = document.getElementById('allowedBin').value;
+      
+      if (preferredChannel) {
+        promotionInfo.preferred_channel = preferredChannel;
+      }
+      if (allowedBin) {
+        promotionInfo.allowed_bin = allowedBin;
+      }
+
+      // Build discount detail (if any)
+      const discountDetail = {};
+      const discountAmount = parseFloat(document.getElementById('discountAmount').value);
+      if (discountAmount > 0) {
+        discountDetail.discount_amount = discountAmount;
+      }
+
+      // Build custom fields
+      const customFields = {
+        mdf_1: document.getElementById('mdf1').value || '',
+        mdf_2: document.getElementById('mdf2').value || '',
+        mdf_3: document.getElementById('mdf3').value || ''
+      };
+
+      // Initiate payment
+      showResult('info', 'Creating payment order...');
+
+      pso.showPaymentForm({
+        orderId: orderId,
+        amount: amount,
+        currency: currency,
+        customerInfo: customerInfo,
+        productInfo: productInfo,
+        promotionInfo: Object.keys(promotionInfo).length > 0 ? promotionInfo : undefined,
+        discountDetail: Object.keys(discountDetail).length > 0 ? discountDetail : undefined,
+        customFields: customFields,
+        successUrl: window.location.origin + '/payment/success',
+        cancelUrl: window.location.origin + '/payment/cancel',
+        failureUrl: window.location.origin + '/payment/failure',
+        ipnUrl: window.location.origin + '/payment/ipn',
+        onSuccess: (result) => {
+          console.log('Payment successful:', result);
+          showResult('success', `
+            <strong>Payment Successful!</strong><br><br>
+            <strong>Transaction ID:</strong> ${result.transactionId}<br>
+            <strong>Session ID:</strong> ${result.sessionId || 'N/A'}<br>
+            <strong>Status:</strong> ${result.status || 'Completed'}<br><br>
+            <em>Check browser console for full response</em>
+          `);
+        },
+        onError: (error) => {
+          console.error('Payment failed:', error);
+          showResult('error', `
+            <strong>Payment Failed</strong><br><br>
+            <strong>Message:</strong> ${error.message || 'An error occurred during payment processing'}<br>
+            <strong>Transaction ID:</strong> ${error.transactionId || 'N/A'}<br><br>
+            <em>Check browser console for details</em>
+          `);
+        },
+        onCancel: () => {
+          console.log('Payment cancelled');
+          showResult('info', `
+            <strong>Payment Cancelled</strong><br><br>
+            Payment was cancelled by user
+          `);
+        }
+      });
+    }
+
+    function showRequestExample() {
+      const orderId = document.getElementById('orderId').value || 'ORDER-' + Date.now();
+      const amount = parseFloat(document.getElementById('amount').value);
+      const currency = document.getElementById('currency').value;
+
+      const exampleRequest = {
+        order_id: orderId,
+        order_information: {
+          payable_amount: amount,
+          currency_code: currency
+        },
+        customer_information: {
+          name: document.getElementById('customerName').value,
+          email: document.getElementById('customerEmail').value,
+          phone: document.getElementById('customerPhone').value,
+          address: document.getElementById('customerAddress').value
+        },
+        product_information: {
+          name: document.getElementById('productName').value,
+          description: document.getElementById('productDescription').value,
+          quantity: parseInt(document.getElementById('productQuantity').value)
+        },
+        ipn_url: window.location.origin + '/payment/ipn',
+        success_url: window.location.origin + '/payment/success',
+        cancel_url: window.location.origin + '/payment/cancel',
+        failure_url: window.location.origin + '/payment/failure',
+        mdf_1: document.getElementById('mdf1').value,
+        mdf_2: document.getElementById('mdf2').value,
+        mdf_3: document.getElementById('mdf3').value
+      };
+
+      console.log('Request Example:', exampleRequest);
+      
+      showResult('info', `
+        <strong>Request Example</strong><br><br>
+        <pre style="background: #1f2937; color: #f9fafb; padding: 15px; border-radius: 8px; overflow-x: auto; text-align: left;">${JSON.stringify(exampleRequest, null, 2)}</pre>
+        <br><em>Full request logged to browser console</em>
+      `);
+    }
+
+    function showResult(type, message) {
+      const resultDiv = document.getElementById('result');
+      resultDiv.className = `result ${type}`;
+      resultDiv.innerHTML = message;
+      resultDiv.style.display = 'block';
+    }
+
+    function clearResult() {
+      const resultDiv = document.getElementById('result');
+      resultDiv.style.display = 'none';
+    }
+  </script>
+</body>
+</html>

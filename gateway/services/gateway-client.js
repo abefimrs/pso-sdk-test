@@ -37,11 +37,11 @@ class GatewayClient {
     const endpoint = config.gateway.endpoints.createOrder;
     const fullUrl = `${this.baseUrl}${endpoint}`;
     
-    // Build request body without authentication credentials
+    // Build request body matching exact API specification
     const requestBody = {
       order_id: orderData.orderId,
       order_information: {
-        payable_amount: orderData.amount,
+        payable_amount: parseFloat(orderData.amount),
         currency_code: orderData.currency || 'BDT'
       },
       ipn_url: orderData.ipnUrl,

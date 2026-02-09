@@ -1,0 +1,25 @@
+{
+  "name": "pso/payment-gateway-php",
+  "description": "PSO Test Payment Gateway - Mock payment processor for development (PHP)",
+  "version": "1.0.0",
+  "type": "project",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "PSO Team"
+    }
+  ],
+  "require": {
+    "php": ">=7.4",
+    "ext-json": "*",
+    "ext-curl": "*"
+  },
+  "autoload": {
+    "psr-4": {
+      "PSO\\Gateway\\": ""
+    }
+  },
+  "scripts": {
+    "serve": "php -S localhost:3000 index.php"
+  }
+}

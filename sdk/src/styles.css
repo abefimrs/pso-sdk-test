@@ -31,6 +31,14 @@
   overflow-y: auto;
   transform: scale(0.9);
   transition: transform 0.3s ease;
+  display: flex;
+  flex-direction: column;
+}
+
+.pso-popup.pso-popup-iframe {
+  max-width: 800px;
+  height: 80vh;
+  max-height: 700px;
 }
 
 .pso-popup.pso-active {
@@ -256,6 +264,11 @@
   .pso-field-half {
     width: 100%;
   }
+  
+  .pso-popup.pso-popup-iframe {
+    max-width: 95%;
+    height: 90vh;
+  }
 }
 
 /* Card Type Icons (Optional Enhancement) */
@@ -273,6 +286,49 @@
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+/* Iframe Container Styles */
+.pso-iframe-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  padding: 0;
+  overflow: hidden;
+}
+
+.pso-iframe-container #pso-gateway-iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  flex: 1;
+}
+
+.pso-iframe-container #pso-loading {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: white;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+
+/* Footer */
+.pso-footer {
+  padding: 12px 24px;
+  border-top: 1px solid #e5e7eb;
+  background: #f9fafb;
+  border-radius: 0 0 12px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   font-size: 10px;
   color: #6b7280;
 }
+

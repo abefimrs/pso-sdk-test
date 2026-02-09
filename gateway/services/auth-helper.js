@@ -18,23 +18,23 @@ class AuthHelper {
   /**
    * Generate HMAC-SHA256 signature for gateway authentication
    * 
-   * @param {string} timestamp - ISO 8601 timestamp
-   * @param {string} host - Gateway host (e.g., api-stage.tnextpay.com)
-   * @param {string} targetApi - Full API endpoint path
+   * @param {string} timestamp - GMT timestamp
+   * @param {string} host - Gateway host with protocol (e.g., http://192.168.169.162:8094)
+   * @param {string} targetApi - API method and path (e.g., POST /p/service/api/payment/processing/payment-order)
    * @param {string} merchantId - Merchant ID
    * @param {string} apiKey - API Key
    * @param {string} apiSecret - API Secret (used for HMAC)
-   * @returns {string} - HMAC-SHA256 signature (hex)
+   * @returns {string} - HMAC-SHA256 signature (base64)
    */
   generateSignature(timestamp, host, targetApi, merchantId, apiKey, apiSecret) {
     // Create signature string: timestamp|host|targetApi|merchantId|apiKey
     const signatureString = `${timestamp}|${host}|${targetApi}|${merchantId}|${apiKey}`;
     
-    // Generate HMAC-SHA256 signature
+    // Generate HMAC-SHA256 signature and encode as base64
     const signature = crypto
       .createHmac('sha256', apiSecret)
       .update(signatureString)
-      .digest('hex');
+      .digest('base64');
     
     return signature;
   }
@@ -43,35 +43,35 @@ class AuthHelper {
    * Generate SHA256 digest of request body
    * 
    * @param {Object} requestBody - Request body object
-   * @returns {string} - SHA256 hash (hex)
+   * @returns {string} - SHA256 hash with SHA-256= prefix (base64)
    */
   generateDigest(requestBody) {
     // Convert request body to JSON string
     const bodyString = JSON.stringify(requestBody);
     
-    // Generate SHA256 hash
+    // Generate SHA256 hash and encode as base64
     const digest = crypto
       .createHash('sha256')
       .update(bodyString)
-      .digest('hex');
+      .digest('base64');
     
-    return digest;
+    return `SHA-256=${digest}`;
   }
 
   /**
    * Generate all required headers for gateway API authentication
    * 
-   * @param {string} targetApi - Full API endpoint path
+   * @param {string} targetApi - API endpoint path (e.g., /p/service/api/payment/processing/payment-order)
    * @param {Object} requestBody - Request body object
    * @param {Object} config - Configuration object with credentials
    * @returns {Object} - Headers object with all required authentication headers
    */
   generateGatewayHeaders(targetApi, requestBody, config) {
-    // Generate ISO 8601 timestamp
-    const timestamp = new Date().toISOString();
+    // Generate GMT timestamp (e.g., "Mon, 09 Feb 2026 07:47:49 GMT")
+    const timestamp = new Date().toUTCString();
     
     // Extract configuration
-    const host = config.host || 'api-stage.tnextpay.com';
+    const baseHost = config.host || 'api-stage.tnextpay.com';
     const merchantId = config.merchantId;
     const apiKey = config.apiKey;
     const apiSecret = config.apiSecret;
@@ -87,11 +87,24 @@ class AuthHelper {
       throw new Error('API_SECRET is required for gateway authentication');
     }
 
+    // Build host with protocol (e.g., "http://192.168.169.162:8094")
+    let host;
+    if (baseHost.startsWith('http://') || baseHost.startsWith('https://')) {
+      host = baseHost;
+    } else {
+      // Default to https for domain names, http for IP addresses
+      const isLocalIp = /^(localhost|127\.0\.0\.1|192\.168\.|10\.|172\.(1[6-9]|2[0-9]|3[01])\.)/.test(baseHost);
+      host = isLocalIp ? `http://${baseHost}` : `https://${baseHost}`;
+    }
+
+    // Build target API with method (e.g., "POST /p/service/api/payment/processing/payment-order")
+    const targetApiWithMethod = `POST ${targetApi}`;
+
     // Generate signature and digest
     const signature = this.generateSignature(
       timestamp,
       host,
-      targetApi,
+      targetApiWithMethod,
       merchantId,
       apiKey,
       apiSecret
@@ -102,7 +115,7 @@ class AuthHelper {
     return {
       'X-TNPG-TIMESTAMP': timestamp,
       'X-TNPG-HOST': host,
-      'X-TNPG-TARGET-API': targetApi,
+      'X-TNPG-TARGET-API': targetApiWithMethod,
       'X-TNPG-MERCHANT-ID': merchantId,
       'X-TNPG-API-KEY': apiKey,
       'X-TNPG-SIGNATURE': signature,

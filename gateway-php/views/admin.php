@@ -1,48 +1,3 @@
-/**
- * PSO Test Payment Gateway Server
- * Mock payment processor for development and testing
- */
-
-const express = require('express');
-const cors = require('cors');
-const bodyParser = require('body-parser');
-const path = require('path');
-const config = require('./config/config');
-
-const paymentRoutes = require('./routes/payments');
-const tokenRoutes = require('./routes/tokens');
-const paymentGatewayRoutes = require('./routes/payment-gateway');
-const { generalLimiter } = require('./middleware/rate-limit');
-
-const app = express();
-const PORT = config.port;
-
-// Middleware
-app.use(cors({
-  origin: config.security.allowedOrigins,
-  credentials: true
-}));
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
-
-// Apply general rate limiting
-app.use('/api/', generalLimiter);
-
-// Request logging
-app.use((req, res, next) => {
-  console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
-  next();
-});
-
-// API Routes
-app.use('/api/payments', paymentRoutes); // Legacy test routes
-app.use('/api/tokens', tokenRoutes);
-app.use('/api/payment', paymentGatewayRoutes); // Real gateway integration routes
-app.use('/payment/api/v1/p/service/api/payment/processing', paymentGatewayRoutes); // TNPG API endpoint
-
-// Admin interface - serve static HTML
-app.get('/admin', (req, res) => {
-  res.send(`
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -180,6 +135,11 @@ app.get('/admin', (req, res) => {
       color: #92400e;
     }
     
+    .status.PENDING {
+      background: #e0e7ff;
+      color: #3730a3;
+    }
+    
     .amount {
       font-weight: 600;
       color: #333;
@@ -206,7 +166,7 @@ app.get('/admin', (req, res) => {
 </head>
 <body>
   <div class="container">
-    <h1>PSO Payment Gateway Admin</h1>
+    <h1>PSO Payment Gateway Admin (PHP)</h1>
     <p class="subtitle">Test Transaction Dashboard</p>
     
     <div class="stats" id="stats">
@@ -219,18 +179,17 @@ app.get('/admin', (req, res) => {
         <div class="stat-value" id="stat-success">0</div>
       </div>
       <div class="stat-card declined">
-        <div class="stat-label">Declined</div>
-        <div class="stat-value" id="stat-declined">0</div>
+        <div class="stat-label">Failed</div>
+        <div class="stat-value" id="stat-failed">0</div>
       </div>
       <div class="stat-card error">
-        <div class="stat-label">Errors</div>
-        <div class="stat-value" id="stat-errors">0</div>
+        <div class="stat-label">Pending</div>
+        <div class="stat-value" id="stat-pending">0</div>
       </div>
     </div>
     
     <div class="controls">
       <button onclick="loadTransactions()">Refresh</button>
-      <button onclick="clearTransactions()">Clear All</button>
     </div>
     
     <div id="transactions-container">
@@ -261,16 +220,16 @@ app.get('/admin', (req, res) => {
     
     function updateStats(stats) {
       document.getElementById('stat-total').textContent = stats.total;
-      document.getElementById('stat-success').textContent = stats.successful;
-      document.getElementById('stat-declined').textContent = stats.declined;
-      document.getElementById('stat-errors').textContent = stats.errors;
+      document.getElementById('stat-success').textContent = stats.success;
+      document.getElementById('stat-failed').textContent = stats.failed;
+      document.getElementById('stat-pending').textContent = stats.pending;
     }
     
     function renderTransactions(transactions) {
       const container = document.getElementById('transactions-container');
       
       if (transactions.length === 0) {
-        container.innerHTML = \`
+        container.innerHTML = `
           <div class="empty-state">
             <svg fill="currentColor" viewBox="0 0 20 20">
               <path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4z"></path>
@@ -278,54 +237,47 @@ app.get('/admin', (req, res) => {
             </svg>
             <p>No transactions yet</p>
           </div>
-        \`;
+        `;
         return;
       }
       
-      container.innerHTML = \`
+      container.innerHTML = `
         <table>
           <thead>
             <tr>
               <th>Transaction ID</th>
-              <th>Cardholder</th>
-              <th>Card</th>
+              <th>Order ID</th>
+              <th>Merchant</th>
               <th>Amount</th>
               <th>Status</th>
               <th>Time</th>
             </tr>
           </thead>
           <tbody>
-            \${transactions.map(t => \`
+            ${transactions.map(t => `
               <tr>
-                <td><code>\${t.id.slice(0, 8)}...</code></td>
-                <td>\${t.cardholderName}</td>
-                <td>\${t.cardNumber}</td>
-                <td class="amount">\${formatAmount(t.amount, t.currency)}</td>
-                <td><span class="status \${t.status}">\${t.status}</span></td>
-                <td class="timestamp">\${formatTime(t.timestamp)}</td>
+                <td><code>${(t.id || '').substring(0, 8)}...</code></td>
+                <td>${t.orderId || t.cardholderName || 'N/A'}</td>
+                <td>${(t.merchantId || 'unknown').substring(0, 12)}</td>
+                <td class="amount">${formatAmount(t.amount, t.currency)}</td>
+                <td><span class="status ${t.status}">${t.status}</span></td>
+                <td class="timestamp">${formatTime(t.timestamp || t.createdAt)}</td>
               </tr>
-            \`).join('')}
+            `).join('')}
           </tbody>
         </table>
-      \`;
+      `;
     }
     
     function formatAmount(amount, currency) {
-      const formatted = (amount / 100).toFixed(2);
-      const symbols = { 'USD': '$', 'EUR': '€', 'GBP': '£' };
-      return \`\${symbols[currency] || currency}\${formatted}\`;
+      const formatted = parseFloat(amount).toFixed(2);
+      return `${currency || 'BDT'} ${formatted}`;
     }
     
     function formatTime(timestamp) {
+      if (!timestamp) return 'N/A';
       const date = new Date(timestamp);
       return date.toLocaleString();
-    }
-    
-    async function clearTransactions() {
-      if (confirm('Clear all transactions?')) {
-        // This would require a DELETE endpoint
-        alert('Clear functionality would be implemented on the backend');
-      }
     }
     
     // Load transactions on page load
@@ -336,64 +288,3 @@ app.get('/admin', (req, res) => {
   </script>
 </body>
 </html>
-  `);
-});
-
-// Health check
-app.get('/health', (req, res) => {
-  res.json({ 
-    status: 'ok', 
-    environment: 'test',
-    timestamp: new Date().toISOString()
-  });
-});
-
-// Root endpoint
-app.get('/', (req, res) => {
-  res.json({
-    name: 'PSO Test Payment Gateway',
-    version: '1.0.0',
-    environment: config.env,
-    endpoints: {
-      // Real Gateway Integration
-      paymentCreate: '/api/payment/create',
-      paymentVerify: '/api/payment/verify',
-      paymentStatus: '/api/payment/status/:orderId',
-      ipn: '/api/payment/ipn',
-      // Legacy Test Endpoints
-      payments: '/api/payments/process',
-      verify: '/api/payments/verify/:id',
-      tokens: '/api/tokens/create',
-      // Admin
-      admin: '/admin',
-      health: '/health'
-    },
-    testCards: {
-      success: ['4111111111111111', '4242424242424242', '5555555555554444'],
-      declined: ['4000000000000002', '4000000000000069', '4000000000000127'],
-      error: ['4000000000000119', '4000000000000341', '4000000000000259']
-    }
-  });
-});
-
-// Error handling
-app.use((err, req, res, next) => {
-  console.error('Server error:', err);
-  res.status(500).json({
-    success: false,
-    message: 'Internal server error'
-  });
-});
-
-// Start server
-app.listen(PORT, () => {
-  console.log('=================================');
-  console.log('PSO Test Payment Gateway');
-  console.log('=================================');
-  console.log(`Server running on port ${PORT}`);
-  console.log(`Admin interface: http://localhost:${PORT}/admin`);
-  console.log(`API endpoint: http://localhost:${PORT}/api/payments/process`);
-  console.log('=================================');
-});
-
-module.exports = app;
