@@ -69,6 +69,17 @@ describe('PSOPayment SDK', () => {
       consoleSpy.mockRestore();
       window.location.protocol = 'https:';
     });
+
+    test('should initialize with custom theme', () => {
+      const pso = new PSOPayment({
+        merchantId: 'TEST_MERCHANT_123',
+        theme: {
+          primaryColor: '#007bff'
+        }
+      });
+      
+      expect(pso.config.theme.primaryColor).toBe('#007bff');
+    });
   });
 
   describe('showPaymentForm validation', () => {
@@ -274,6 +285,158 @@ describe('PSOPayment SDK', () => {
         expect.stringContaining('https://custom-gateway.example.com'),
         expect.any(Object)
       );
+    });
+
+    test('should include optional fields in request', async () => {
+      global.fetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({ success: true })
+      });
+
+      await pso.createPaymentOrder({
+        orderId: 'ORD-123',
+        amount: 1000,
+        currency: 'BDT',
+        customerInfo: {},
+        productInfo: {},
+        promotionInfo: { code: 'PROMO10' },
+        discountDetail: { amount: 100 },
+        customFields: { custom: 'value' }
+      });
+
+      const callArgs = global.fetch.mock.calls[0];
+      const requestBody = JSON.parse(callArgs[1].body);
+      
+      expect(requestBody.promotion_information).toEqual({ code: 'PROMO10' });
+      expect(requestBody.discount_detail).toEqual({ amount: 100 });
+      expect(requestBody.custom).toBe('value');
+    });
+  });
+
+  describe('verifyPayment', () => {
+    let pso;
+
+    beforeEach(() => {
+      pso = new PSOPayment({
+        merchantId: 'TEST_MERCHANT_123',
+        environment: 'test'
+      });
+      global.fetch = jest.fn();
+    });
+
+    afterEach(() => {
+      jest.clearAllMocks();
+    });
+
+    test('should verify payment successfully', async () => {
+      const mockResponse = {
+        success: true,
+        status: 'completed',
+        transactionId: 'TXN-123'
+      };
+
+      global.fetch.mockResolvedValue({
+        ok: true,
+        json: async () => mockResponse
+      });
+
+      const result = await pso.verifyPayment('TXN-123');
+      expect(result).toEqual(mockResponse);
+    });
+
+    test('should handle verification errors', async () => {
+      global.fetch.mockResolvedValue({
+        ok: false
+      });
+
+      await expect(
+        pso.verifyPayment('TXN-123')
+      ).rejects.toThrow('Failed to verify payment');
+    });
+  });
+
+  describe('createPaymentToken', () => {
+    let pso;
+
+    beforeEach(() => {
+      pso = new PSOPayment({
+        merchantId: 'TEST_MERCHANT_123',
+        environment: 'test'
+      });
+      global.fetch = jest.fn();
+    });
+
+    afterEach(() => {
+      jest.clearAllMocks();
+    });
+
+    test('should create payment token successfully', async () => {
+      const mockResponse = {
+        token: 'TOKEN-123',
+        success: true
+      };
+
+      global.fetch.mockResolvedValue({
+        ok: true,
+        json: async () => mockResponse
+      });
+
+      const result = await pso.createPaymentToken({
+        cardNumber: '4111111111111111'
+      });
+
+      expect(result).toEqual(mockResponse);
+    });
+
+    test('should handle token creation errors', async () => {
+      global.fetch.mockResolvedValue({
+        ok: false
+      });
+
+      await expect(
+        pso.createPaymentToken({})
+      ).rejects.toThrow('Failed to create payment token');
+    });
+  });
+
+  describe('verifyPaymentStatus', () => {
+    let pso;
+
+    beforeEach(() => {
+      pso = new PSOPayment({
+        merchantId: 'TEST_MERCHANT_123',
+        environment: 'test'
+      });
+      global.fetch = jest.fn();
+    });
+
+    afterEach(() => {
+      jest.clearAllMocks();
+    });
+
+    test('should verify payment status successfully', async () => {
+      const mockResponse = {
+        status: 'success',
+        orderId: 'ORD-123'
+      };
+
+      global.fetch.mockResolvedValue({
+        ok: true,
+        json: async () => mockResponse
+      });
+
+      const result = await pso.verifyPaymentStatus('ORD-123');
+      expect(result).toEqual(mockResponse);
+    });
+
+    test('should handle status verification errors', async () => {
+      global.fetch.mockResolvedValue({
+        ok: false
+      });
+
+      await expect(
+        pso.verifyPaymentStatus('ORD-123')
+      ).rejects.toThrow('Failed to verify payment');
     });
   });
 

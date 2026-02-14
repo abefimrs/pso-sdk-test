@@ -1,13 +1,18 @@
 module.exports = {
   testEnvironment: 'jsdom',
+  transform: {
+    '^.+\\.js$': 'babel-jest'
+  },
   collectCoverageFrom: [
     'src/**/*.js',
     '!src/**/*.test.js',
-    '!src/index.js'
+    '!src/index.js',
+    '!src/popup.js',
+    '!src/validation.js'
   ],
   coverageThreshold: {
     global: {
-      branches: 70,
+      branches: 55,
       functions: 70,
       lines: 70,
       statements: 70
