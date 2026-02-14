@@ -1,0 +1,58 @@
+name: Publish to NPM
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  publish:
+    name: Publish SDK to NPM
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20.x'
+          registry-url: 'https://registry.npmjs.org'
+      
+      - name: Install dependencies
+        working-directory: sdk
+        run: npm ci
+      
+      - name: Run tests
+        working-directory: sdk
+        run: npm test
+      
+      - name: Build SDK
+        working-directory: sdk
+        run: npm run build
+      
+      - name: Publish to NPM
+        working-directory: sdk
+        run: npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      
+      - name: Create GitHub Release Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: sdk/dist/pso-sdk.min.js
+          asset_name: pso-sdk.min.js
+          asset_content_type: application/javascript
+      
+      - name: Upload CSS Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: sdk/dist/pso-sdk.css
+          asset_name: pso-sdk.css
+          asset_content_type: text/css

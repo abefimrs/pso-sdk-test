@@ -3,24 +3,74 @@
   "version": "1.0.0",
   "description": "PSO Payment Gateway SDK - Client-side JavaScript SDK for secure payment processing",
   "main": "dist/pso-sdk.js",
+  "module": "src/index.js",
+  "unpkg": "dist/pso-sdk.min.js",
+  "jsdelivr": "dist/pso-sdk.min.js",
+  "types": "types/index.d.ts",
   "scripts": {
     "build": "webpack --mode production",
-    "dev": "webpack --mode development --watch",
-    "test": "jest"
+    "build:dev": "webpack --mode development",
+    "watch": "webpack --mode development --watch",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "lint": "eslint src/**/*.js",
+    "lint:fix": "eslint src/**/*.js --fix"
   },
+  "files": [
+    "dist/",
+    "src/",
+    "types/",
+    "README.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/abefimrs/pso-sdk-test.git",
+    "directory": "sdk"
+  },
+  "bugs": {
+    "url": "https://github.com/abefimrs/pso-sdk-test/issues"
+  },
+  "homepage": "https://github.com/abefimrs/pso-sdk-test#readme",
   "keywords": [
     "payment",
     "gateway",
     "sdk",
-    "pso"
+    "pso",
+    "payment-processing",
+    "payment-gateway",
+    "online-payments",
+    "ecommerce",
+    "checkout",
+    "bangladesh",
+    "bdt"
   ],
   "author": "PSO Team",
   "license": "MIT",
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "browserslist": [
+    "> 1%",
+    "last 2 versions",
+    "not dead"
+  ],
   "devDependencies": {
-    "webpack": "^5.88.0",
-    "webpack-cli": "^5.1.4",
+    "@babel/core": "^7.22.0",
+    "@babel/preset-env": "^7.22.0",
+    "babel-loader": "^9.1.2",
     "css-loader": "^6.8.1",
+    "eslint": "^8.42.0",
+    "jest": "^29.5.0",
+    "jest-environment-jsdom": "^29.5.0",
+    "mini-css-extract-plugin": "^2.7.6",
     "style-loader": "^3.3.3",
-    "jest": "^29.5.0"
+    "terser-webpack-plugin": "^5.3.9",
+    "webpack": "^5.88.0",
+    "webpack-cli": "^5.1.4"
   }
 }

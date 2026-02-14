@@ -1,0 +1,76 @@
+name: SDK Build and Test
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'sdk/**'
+      - '.github/workflows/sdk-build-test.yml'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'sdk/**'
+      - '.github/workflows/sdk-build-test.yml'
+
+jobs:
+  build-and-test:
+    name: Build and Test (Node ${{ matrix.node-version }})
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        node-version: [14.x, 16.x, 18.x, 20.x]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+          cache-dependency-path: sdk/package-lock.json
+      
+      - name: Install dependencies
+        working-directory: sdk
+        run: npm ci
+      
+      - name: Run linter
+        working-directory: sdk
+        run: npm run lint
+      
+      - name: Run tests with coverage
+        working-directory: sdk
+        run: npm run test:coverage
+      
+      - name: Upload coverage to Codecov
+        if: matrix.node-version == '20.x'
+        uses: codecov/codecov-action@v3
+        with:
+          directory: sdk/coverage
+          flags: sdk
+          name: sdk-coverage
+      
+      - name: Build SDK
+        working-directory: sdk
+        run: npm run build
+      
+      - name: Check bundle size
+        working-directory: sdk
+        run: |
+          SIZE=$(stat -c%s dist/pso-sdk.min.js)
+          MAX_SIZE=51200  # 50KB in bytes
+          echo "Bundle size: $SIZE bytes (max: $MAX_SIZE bytes)"
+          if [ $SIZE -gt $MAX_SIZE ]; then
+            echo "Error: Bundle size exceeds 50KB limit!"
+            exit 1
+          fi
+      
+      - name: Upload build artifacts
+        if: matrix.node-version == '20.x'
+        uses: actions/upload-artifact@v3
+        with:
+          name: sdk-dist
+          path: sdk/dist/
+          retention-days: 7
