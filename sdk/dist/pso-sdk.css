@@ -1,0 +1,337 @@
+/* PSO Payment SDK Styles */
+
+/* Overlay */
+.pso-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 999999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.pso-overlay.pso-active {
+  opacity: 1;
+}
+
+/* Popup Container */
+.pso-popup {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  max-width: 500px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+  transform: scale(0.9);
+  transition: transform 0.3s ease;
+  display: flex;
+  flex-direction: column;
+}
+
+.pso-popup.pso-popup-iframe {
+  max-width: 800px;
+  height: 80vh;
+  max-height: 700px;
+}
+
+.pso-popup.pso-active {
+  transform: scale(1);
+}
+
+/* Header */
+.pso-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.pso-header h2 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.pso-close {
+  background: none;
+  border: none;
+  font-size: 32px;
+  line-height: 1;
+  color: #6b7280;
+  cursor: pointer;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.pso-close:hover {
+  background-color: #f3f4f6;
+}
+
+/* Body */
+.pso-body {
+  padding: 24px;
+}
+
+/* Amount Display */
+.pso-amount {
+  background: #f9fafb;
+  padding: 16px;
+  border-radius: 8px;
+  margin-bottom: 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.pso-amount .pso-label {
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.pso-amount .pso-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: #111827;
+}
+
+/* Form */
+.pso-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.pso-field {
+  display: flex;
+  flex-direction: column;
+}
+
+.pso-field label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 6px;
+}
+
+.pso-field input {
+  padding: 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 16px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.pso-field input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.pso-field input::placeholder {
+  color: #9ca3af;
+}
+
+/* Row Layout */
+.pso-row {
+  display: flex;
+  gap: 12px;
+}
+
+.pso-field-half {
+  flex: 1;
+}
+
+/* Error Messages */
+.pso-error {
+  color: #ef4444;
+  font-size: 13px;
+  margin-top: 4px;
+  display: none;
+}
+
+.pso-global-error {
+  background: #fee2e2;
+  color: #991b1b;
+  padding: 12px;
+  border-radius: 6px;
+  margin-bottom: 16px;
+  font-size: 14px;
+}
+
+/* Submit Button */
+.pso-submit-btn {
+  background: #3b82f6;
+  color: white;
+  border: none;
+  padding: 14px 24px;
+  border-radius: 6px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  margin-top: 8px;
+}
+
+.pso-submit-btn:hover {
+  background: #2563eb;
+}
+
+.pso-submit-btn:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+}
+
+/* Loading State */
+.pso-loading {
+  text-align: center;
+  padding: 40px 20px;
+}
+
+.pso-spinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid #e5e7eb;
+  border-top-color: #3b82f6;
+  border-radius: 50%;
+  animation: pso-spin 1s linear infinite;
+  margin: 0 auto 16px;
+}
+
+@keyframes pso-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.pso-loading p {
+  color: #6b7280;
+  font-size: 14px;
+  margin: 0;
+}
+
+/* Security Info */
+.pso-security-info {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid #e5e7eb;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.pso-security-info svg {
+  color: #10b981;
+}
+
+/* Responsive Design */
+@media (max-width: 640px) {
+  .pso-popup {
+    width: 95%;
+    max-height: 95vh;
+  }
+
+  .pso-header h2 {
+    font-size: 20px;
+  }
+
+  .pso-amount .pso-value {
+    font-size: 20px;
+  }
+
+  .pso-row {
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .pso-field-half {
+    width: 100%;
+  }
+  
+  .pso-popup.pso-popup-iframe {
+    max-width: 95%;
+    height: 90vh;
+  }
+}
+
+/* Card Type Icons (Optional Enhancement) */
+.pso-card-icons {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.pso-card-icon {
+  width: 40px;
+  height: 28px;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Iframe Container Styles */
+.pso-iframe-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  padding: 0;
+  overflow: hidden;
+}
+
+.pso-iframe-container #pso-gateway-iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  flex: 1;
+}
+
+.pso-iframe-container #pso-loading {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: white;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+
+/* Footer */
+.pso-footer {
+  padding: 12px 24px;
+  border-top: 1px solid #e5e7eb;
+  background: #f9fafb;
+  border-radius: 0 0 12px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  color: #6b7280;
+}
+
+
+
+/*# sourceMappingURL=pso-sdk.css.map*/

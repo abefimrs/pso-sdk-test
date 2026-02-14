@@ -17,7 +17,59 @@ A comprehensive payment gateway solution with client-side SDK and test gateway f
 - 📚 **Documentation**: Complete integration guides and examples
 - 🔒 **Backend Proxy**: Secure credential management and API communication
 
-## Quick Start
+## Installation via NPM
+
+```bash
+npm install @pso/payment-sdk
+```
+
+### Usage
+
+```javascript
+import PSOPayment from '@pso/payment-sdk';
+
+const pso = new PSOPayment({
+  merchantId: 'your-merchant-id',
+  environment: 'production'
+});
+
+await pso.showPaymentForm({
+  amount: 1000,
+  currency: 'BDT',
+  customer: {
+    name: 'John Doe',
+    email: 'john@example.com',
+    phone: '+880123456789'
+  },
+  onSuccess: (data) => console.log('Success!', data),
+  onError: (error) => console.error('Error:', error),
+  onCancel: () => console.log('Payment cancelled')
+});
+```
+
+### CDN Usage
+
+```html
+<!-- Include SDK from CDN -->
+<script src="https://unpkg.com/@pso/payment-sdk@1.0.0/dist/pso-sdk.min.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/@pso/payment-sdk@1.0.0/dist/pso-sdk.css">
+
+<script>
+  const pso = new PSOPayment({
+    merchantId: 'your-merchant-id',
+    environment: 'production'
+  });
+</script>
+```
+
+**Alternative CDN (jsDelivr):**
+
+```html
+<script src="https://cdn.jsdelivr.net/npm/@pso/payment-sdk@1.0.0/dist/pso-sdk.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@pso/payment-sdk@1.0.0/dist/pso-sdk.css">
+```
+
+## Quick Start (Development)
 
 ### 1. Install Dependencies
 

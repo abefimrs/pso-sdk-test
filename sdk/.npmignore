@@ -1,0 +1,13 @@
+src/
+__tests__/
+*.test.js
+.eslintrc.js
+jest.config.js
+babel.config.js
+webpack.config.js
+coverage/
+.DS_Store
+*.log
+node_modules/
+.env
+.env.*
